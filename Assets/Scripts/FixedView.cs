@@ -3,10 +3,11 @@ using System.Collections.Generic;
 
 public class FixedView : AView
 {
-    public float yaw;
-    public float pitch;
-    public float roll;
-    public float fov;
+    
+    [Range(0, 360)] public float yaw;
+    [Range(-90, 90)] public float pitch;
+    [Range(-180, 180)] public float roll;
+    [Range(0, 180)] public float fov;
 
     public override CameraConfiguration GetConfiguration()
     {

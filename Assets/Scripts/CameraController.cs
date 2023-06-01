@@ -1,10 +1,15 @@
-using UnityEngine;
-using System.Collections.Generic;
+using UnityEngine;using System.Collections.Generic;
+using Unity.VisualScripting;
 
 public class CameraController : MonoBehaviour
 {
-    public Camera camera;
-    private List<AView> activeViews = new List<AView>();
+    new public Camera camera;
+
+    [SerializeField] private List<AView> activeViews = new List<AView>();
+    CameraConfiguration currentConfiguration;
+    CameraConfiguration targetConfiguration;
+    [SerializeField] float smoothSpeed;
+
 
     private static CameraController instance;
 
@@ -30,7 +35,8 @@ public class CameraController : MonoBehaviour
 
     public void AddView(AView view)
     {
-        activeViews.Add(view);
+        if(!activeViews.Contains(view))
+            activeViews.Add(view);
     }
 
     public void RemoveView(AView view)
@@ -41,7 +47,36 @@ public class CameraController : MonoBehaviour
     private void Update()
     {
         CameraConfiguration averageConfig = ComputeAverageConfiguration();
-        ApplyConfiguration(averageConfig);
+        SetTargetConfiguration(averageConfig);
+        UpdateCameraConfiguration();
+    }
+
+    private void SetTargetConfiguration(CameraConfiguration cameraConfiguration)
+    {
+        targetConfiguration = cameraConfiguration;
+    }
+
+    private void UpdateCameraConfiguration()
+    {
+        if (camera != null && targetConfiguration != null)
+        {
+            if (currentConfiguration == null)
+            {
+                currentConfiguration = targetConfiguration;
+            }
+
+            float deltaSpeed = smoothSpeed * Time.deltaTime;
+
+            currentConfiguration.pivot = Vector3.Lerp(currentConfiguration.pivot, targetConfiguration.pivot, deltaSpeed);
+            currentConfiguration.distance = Mathf.Lerp(currentConfiguration.distance, targetConfiguration.distance, deltaSpeed);
+            currentConfiguration.fov = Mathf.Lerp(currentConfiguration.fov, targetConfiguration.fov, deltaSpeed);
+
+            currentConfiguration.pitch = Mathf.Lerp(currentConfiguration.pitch, targetConfiguration.pitch, deltaSpeed);
+            currentConfiguration.roll = Mathf.Lerp(currentConfiguration.roll, targetConfiguration.roll, deltaSpeed);
+            currentConfiguration.yaw = Mathf.Lerp(currentConfiguration.yaw, targetConfiguration.yaw, deltaSpeed);
+
+            ApplyConfiguration(currentConfiguration);
+        }
     }
 
     private void ApplyConfiguration(CameraConfiguration configuration)
@@ -60,11 +95,16 @@ public class CameraController : MonoBehaviour
         Vector3 averageEulerAngles = Vector3.zero;
         Vector3 averagePivot = Vector3.zero;
         float averageFov = 0f;
+        Vector2 yawSum = Vector2.zero;
 
         foreach (AView view in activeViews)
         {
             CameraConfiguration config = view.GetConfiguration();
             totalWeight += view.weight;
+
+            yawSum += new Vector2( Mathf.Cos(config.yaw * Mathf.Deg2Rad),
+                                Mathf.Sin(config.yaw * Mathf.Deg2Rad)) * view.weight;
+            
 
             Vector3 euler = config.GetRotation().eulerAngles;
             euler.x = Mathf.Repeat(euler.x + 180f, 360f) - 180f;
@@ -76,12 +116,14 @@ public class CameraController : MonoBehaviour
             averageFov += config.fov * view.weight;
         }
 
+        float averageYaw = Vector2.SignedAngle(Vector2.right, yawSum);
+
         averageEulerAngles /= totalWeight;
         averagePivot /= totalWeight;
         averageFov /= totalWeight;
 
         CameraConfiguration averageConfig = new CameraConfiguration();
-        averageConfig.yaw = averageEulerAngles.y;
+        averageConfig.yaw = averageYaw;
         averageConfig.pitch = averageEulerAngles.x;
         averageConfig.roll = averageEulerAngles.z;
         averageConfig.pivot = averagePivot;
@@ -89,5 +131,15 @@ public class CameraController : MonoBehaviour
         averageConfig.fov = averageFov;
 
         return averageConfig;
+    }
+
+    private void OnDrawGizmos()
+    {
+        foreach (var view in activeViews)
+        {
+            view.GetConfiguration().DrawGizmos(Color.blue);
+        }
+
+        ComputeAverageConfiguration().DrawGizmos(Color.red);
     }
 }
