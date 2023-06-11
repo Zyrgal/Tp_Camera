@@ -4,38 +4,21 @@ using System.Collections.Generic;
 public abstract class AView : MonoBehaviour
 {
     public float weight;
-    public bool isActiveOnStart = true;
 
     public abstract CameraConfiguration GetConfiguration();
 
-    private void OnEnable()
+    public void ResetWeight()
     {
-        if (isActiveOnStart)
-            CameraController.Instance.AddView(this);
+        weight = 0.0f;
     }
 
-    private void OnDisable()
+    public void MultiplyWeightBy(float value)
     {
-        CameraController.Instance.RemoveView(this);
+        weight *= value;
     }
 
-    public void SetActive(bool isActive)
+    public void AddWeight(float value)
     {
-        gameObject.SetActive(isActive);
-
-        if (isActive)
-            CameraController.Instance.AddView(this);
-        else
-            CameraController.Instance.RemoveView(this);
+        weight += value;
     }
-
-    private void Start()
-    {
-        SetActive(isActiveOnStart);
-    }
-
-    /*private void OnDestroy()
-    {
-        CameraController.Instance.RemoveView(this);
-    }*/
 }

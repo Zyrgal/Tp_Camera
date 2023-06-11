@@ -7,24 +7,63 @@ using UnityEngine.UIElements;
 
 public class Rail : MonoBehaviour
 {
-    [SerializeField] List<Transform> childs;
-    public bool isLoop = false;
-    float length = 0;
-
-    private void OnValidate()
-    {
-        childs.Clear();
-        for (int i = 0; i < transform.childCount; i++)
-        {
-            childs.Add(transform.GetChild(i));
-        }
-    }
+    public bool isLoop;
+    private float length;
 
     private void Start()
     {
-        for (int i = 0; i < transform.childCount - 1; i++)
+        CalculateLength();
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.green;
+
+        for (int i = 0; i < transform.childCount; i++)
         {
-            length += Vector3.Distance(transform.GetChild(i).position, transform.GetChild(i + 1).position);
+            Vector3 currentNode = transform.GetChild(i).position;
+
+            if (isLoop && i == transform.childCount - 1)
+            {
+                Vector3 firstNode = transform.GetChild(0).position;
+                Gizmos.DrawLine(currentNode, firstNode);
+            }
+            else if (i < transform.childCount - 1)
+            {
+                Vector3 nextNode = transform.GetChild(i + 1).position;
+                Gizmos.DrawLine(currentNode, nextNode);
+            }
+
+            Gizmos.DrawSphere(currentNode, 0.1f);
+        }
+    }
+
+    private void CalculateLength()
+    {
+        length = 0f;
+
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Vector3 currentNode = transform.GetChild(i).position;
+            Vector3 nextNode;
+
+            if (isLoop)
+            {
+                nextNode = transform.GetChild((i + 1) % transform.childCount).position;
+            }
+            else
+            {
+                if (i < transform.childCount - 1)
+                {
+                    nextNode = transform.GetChild(i + 1).position;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            length += Vector3.Distance(currentNode, nextNode);
         }
     }
 
@@ -35,32 +74,27 @@ public class Rail : MonoBehaviour
 
     public Vector3 GetPosition(float distance)
     {
-        for (int i = 0; i < transform.childCount; i++)
+        int nodeCount = transform.childCount;
+
+        if (isLoop)
+            distance %= length;
+        else
+            distance = Mathf.Clamp(distance, 0f, length);
+
+        for (int i = 0; i < nodeCount; i++)
         {
-            if (Vector3.Distance(transform.position, transform.GetChild(i).position) == distance)
+            Transform currentNode = transform.GetChild(i);
+            Transform nextNode = transform.GetChild((i + 1) % nodeCount);
+            float segmentLength = Vector3.Distance(currentNode.position, nextNode.position);
+
+            if (distance <= segmentLength)
             {
-                return transform.GetChild(i).position;
+                return Vector3.Lerp(currentNode.position, nextNode.position, distance / segmentLength);
             }
+
+            distance -= segmentLength;
         }
 
         return Vector3.zero;
     }
-
-    private void OnDrawGizmos()
-    {
-        if (childs.Count <= 0)
-            return;
-
-        Gizmos.color = Color.green;
-
-        for (int i = 0; i < childs.Count; i++)
-        {
-            Gizmos.DrawSphere(childs[i].position, 0.25f);
-            if (i < childs.Count - 1)
-            {
-                Gizmos.DrawLine(childs[i].position, childs[i+1].position);
-            }
-        }
-    }
-
 }

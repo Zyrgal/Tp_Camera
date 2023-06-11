@@ -9,7 +9,7 @@ public class CameraController : MonoBehaviour
     CameraConfiguration currentConfiguration;
     CameraConfiguration targetConfiguration;
     [SerializeField] float smoothSpeed;
-
+    private bool isCutRequested = false;
 
     private static CameraController instance;
 
@@ -46,9 +46,21 @@ public class CameraController : MonoBehaviour
 
     private void Update()
     {
+        if (activeViews.Count <= 0)
+            return;
+
         CameraConfiguration averageConfig = ComputeAverageConfiguration();
         SetTargetConfiguration(averageConfig);
-        UpdateCameraConfiguration();
+
+        if (isCutRequested)
+        {
+            currentConfiguration = targetConfiguration;
+            isCutRequested = false;
+        }
+        else
+        {
+            UpdateCameraConfiguration();
+        }
     }
 
     private void SetTargetConfiguration(CameraConfiguration cameraConfiguration)
@@ -131,6 +143,11 @@ public class CameraController : MonoBehaviour
         averageConfig.fov = averageFov;
 
         return averageConfig;
+    }
+
+    public void Cut()
+    {
+        isCutRequested = true;
     }
 
     private void OnDrawGizmos()
